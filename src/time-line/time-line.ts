@@ -141,27 +141,36 @@ export class TimeLineContainer implements TimeLineOption {
         }
         if (this.nowTime >= oneDayTime) {
           this.nowTime = this.nowTime % oneDayTime;
-
           this.listeners.nextDay && this.listeners.nextDay();
         }
         this.listeners.sliding && this.listeners.sliding(this.nowTime);
         if (translateX > -(oneUnitWidth - halfContainerWidth)) {
+          // console.log("右", formatTime2Text(this.nowTime));
+
           this.renderTimeLine();
           this.translateTimeLine();
-          startTranslateX = -(2 * oneUnitWidth - halfContainerWidth);
+          // startTranslateX = -(2 * oneUnitWidth - halfContainerWidth);
+          startTranslateX = parseInt(
+            getComputedStyle(this.timeLineDom).transform.split(",")[4]
+          );
           startX = endX;
-          startTime = oneDayTime;
+          startTime = this.nowTime;
           couldMove = false;
           return;
-        } else if (translateX <= -(2 * oneUnitWidth - halfContainerWidth)) {
+        } else if (translateX < -(2 * oneUnitWidth - halfContainerWidth)) {
+          // console.log("左", formatTime2Text(this.nowTime));
           this.renderTimeLine();
           this.translateTimeLine();
-          startTranslateX = -(oneUnitWidth - halfContainerWidth);
+          // startTranslateX = -(oneUnitWidth - halfContainerWidth);
+          startTranslateX = parseInt(
+            getComputedStyle(this.timeLineDom).transform.split(",")[4]
+          );
           startX = endX;
-          startTime = 0;
+          startTime = this.nowTime;
           couldMove = false;
           return;
         }
+        // console.log("move", translateX);
 
         this.timeLineDom.style.transform = `translateX(${translateX}px)`;
       };
@@ -274,8 +283,10 @@ export class TimeLineContainer implements TimeLineOption {
     let translateX = (1 + offset / zoomUnit) * oneUnitItemCount! * gapWidth!;
 
     let halfContainerWidth = parseInt(getComputedStyle(this.rootDom).width) / 2;
-
+    // console.log(offset / zoomUnit, translateX, halfContainerWidth);
     translateX = translateX - halfContainerWidth;
+
+    // console.log("set", translateX);
 
     this.timeLineDom.style.transform = `translateX(-${translateX}px)`;
   }
