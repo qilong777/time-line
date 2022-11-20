@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "ES6",
+    "declaration": true,
+    "removeComments": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es5",
+    "sourceMap": false,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "downlevelIteration": true
+  },
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "include": ["src", "test/index.test.ts", "test/index.test.ts"]
+}

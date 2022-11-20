@@ -1,0 +1,77 @@
+.time-line-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+.time-line{
+  position: absolute;
+  height: 100%;
+  
+}
+
+.time-line .time-line-item{
+  float: left;
+  position: relative;
+  width: 1px;
+  height: 15px;
+  background-color: #fff;
+}
+
+.time-line .time-line-item .time-line-item-time{
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translate(-50%, 100% );
+  user-select: none;
+}
+
+/* 中间的白线 */
+.time-line-time-pick{
+  position: absolute;
+  z-index: 1;
+  height: 100%;
+  width: 1px;
+  background-color: #fff;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+
+
+/* 缩放工具 */
+.time-line-zoom-tool{
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  
+}
+
+.time-line-zoom-tool div{
+  float: left;
+  margin: 0 5px;
+}
+
+.time-line-zoom-tool .time-line-zoom{
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  border: 1px solid #fff;
+  cursor: pointer;
+}
+
+.time-line-zoom-tool .time-line-zoom.disable{
+  border: 1px solid #aaa;
+  color: #aaa;
+  user-select: none;
+}
+
+.time-line-zoom-tool .time-line-zoom-value{
+  user-select: none;
+  width: 50px;
+  text-align: center;
+}
