@@ -66,7 +66,7 @@ export class TimeLineContainer implements TimeLineOption {
   heightLightAreas = [];
   dayTimeTextFormat = formatTime2Text;
 
-  gapWidth = 150;
+  gapWidth = 90;
   itemLineWidth = 1;
 
   theme = defaultTheme;
@@ -80,10 +80,13 @@ export class TimeLineContainer implements TimeLineOption {
 
   timeLineWrapDom!: HTMLElement;
   timeLineDom!: HTMLElement;
+  timeHeightLightAreaDom!: HTMLElement;
 
   listeners: ListenersOption = {};
 
   private readonly repeatCount = 3;
+
+  private windowEvents: any = {};
 
   constructor(el: MountedEl, option: TimeLineOption) {
     this.initRootDom(el);
@@ -98,6 +101,16 @@ export class TimeLineContainer implements TimeLineOption {
     this.translateTimeLine();
 
     this.initEventListeners();
+  }
+
+  dispose() {
+    for (const key in this.windowEvents) {
+      if (this.windowEvents.hasOwnProperty(key)) {
+        const fn = this.windowEvents[key];
+        window.removeEventListener(key, fn);
+      }
+    }
+    this.windowEvents = {};
   }
 
   private initEventListeners() {
@@ -205,9 +218,11 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   private initResizeListener() {
-    window.addEventListener("resize", () => {
+    this.windowEvents.resize = () => {
       this.translateTimeLine();
-    });
+    };
+
+    window.addEventListener("resize", this.windowEvents.resize);
   }
 
   zoomCb() {
@@ -234,6 +249,7 @@ export class TimeLineContainer implements TimeLineOption {
 
   setNowTime(nowTime: number) {
     this.nowTime = nowTime;
+    this.setDayTimeFromNowTime();
     this.translateTimeLine();
   }
 
@@ -254,6 +270,10 @@ export class TimeLineContainer implements TimeLineOption {
       this.timeLineDom = document.createElement("div")!;
       this.timeLineDom.className = "time-line";
       this.timeLineWrapDom.appendChild(this.timeLineDom);
+
+      this.timeHeightLightAreaDom = document.createElement("div");
+      this.timeHeightLightAreaDom.className = "time-line-height-light-wrap";
+
       this.rootDom.appendChild(this.timeLineWrapDom);
     }
     const {
@@ -293,9 +313,9 @@ export class TimeLineContainer implements TimeLineOption {
 
     timeLineDom.appendChild(frag);
 
+    timeLineDom.appendChild(this.timeHeightLightAreaDom);
     //
-    const dom = this.renderHeightLightAreas();
-    timeLineDom.appendChild(dom);
+    this.renderHeightLightAreas();
   }
 
   renderHeightLightAreas() {
@@ -345,7 +365,14 @@ export class TimeLineContainer implements TimeLineOption {
       div.style.left = `${left}px`;
       frag.appendChild(div);
     }
+    this.timeHeightLightAreaDom.innerHTML = "";
+    this.timeHeightLightAreaDom.appendChild(frag);
     return frag;
+  }
+
+  updateHeightLightAreas(heightLightAreas: number[][]) {
+    this.heightLightAreas = heightLightAreas;
+    this.renderHeightLightAreas();
   }
 
   renderTimeLineItem(dayTime: number, needSubItem: boolean) {

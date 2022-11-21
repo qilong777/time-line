@@ -48,13 +48,14 @@ export class TimeLineContainer {
         // ];
         this.heightLightAreas = [];
         this.dayTimeTextFormat = formatTime2Text;
-        this.gapWidth = 150;
+        this.gapWidth = 90;
         this.itemLineWidth = 1;
         this.theme = defaultTheme;
         this.zoomTool = new TimeLineZoomTool();
         this.animation = defaultAnimation;
         this.listeners = {};
         this.repeatCount = 3;
+        this.windowEvents = {};
         this.initRootDom(el);
         this.initOption(option);
         this.setDayTimeFromNowTime();
@@ -63,6 +64,15 @@ export class TimeLineContainer {
         this.translateTimeLine();
         this.initEventListeners();
     }
+    dispose() {
+        for (const key in this.windowEvents) {
+            if (this.windowEvents.hasOwnProperty(key)) {
+                const fn = this.windowEvents[key];
+                window.removeEventListener(key, fn);
+            }
+        }
+        this.windowEvents = {};
+    }
     initEventListeners() {
         this.initMouseWheelListener();
         this.initMouseDragListener();
@@ -70,7 +80,7 @@ export class TimeLineContainer {
     }
     initMouseWheelListener() {
         let timer = null;
-        this.rootDom.addEventListener("wheel", (event) => {
+        this.timeLineWrapDom.addEventListener("wheel", (event) => {
             if (timer) {
                 return;
             }
@@ -87,7 +97,7 @@ export class TimeLineContainer {
         });
     }
     initMouseDragListener() {
-        this.rootDom.addEventListener("mousedown", (event) => {
+        this.timeLineWrapDom.addEventListener("mousedown", (event) => {
             event.preventDefault();
             let couldMove = true;
             const gapTime = this.zoomTool.getGapTime();
@@ -153,9 +163,10 @@ export class TimeLineContainer {
         });
     }
     initResizeListener() {
-        window.addEventListener("resize", () => {
+        this.windowEvents.resize = () => {
             this.translateTimeLine();
-        });
+        };
+        window.addEventListener("resize", this.windowEvents.resize);
     }
     zoomCb() {
         this.renderTimeLine();
@@ -178,6 +189,7 @@ export class TimeLineContainer {
     }
     setNowTime(nowTime) {
         this.nowTime = nowTime;
+        this.setDayTimeFromNowTime();
         this.translateTimeLine();
     }
     setDayTimeFromNowTime() {
@@ -195,6 +207,8 @@ export class TimeLineContainer {
             this.timeLineDom = document.createElement("div");
             this.timeLineDom.className = "time-line";
             this.timeLineWrapDom.appendChild(this.timeLineDom);
+            this.timeHeightLightAreaDom = document.createElement("div");
+            this.timeHeightLightAreaDom.className = "time-line-height-light-wrap";
             this.rootDom.appendChild(this.timeLineWrapDom);
         }
         const { timeLineDom, gapWidth, zoomTool, nowDayTime, repeatCount, itemLineWidth, } = this;
@@ -218,9 +232,9 @@ export class TimeLineContainer {
             frag.appendChild(div);
         }
         timeLineDom.appendChild(frag);
+        timeLineDom.appendChild(this.timeHeightLightAreaDom);
         //
-        const dom = this.renderHeightLightAreas();
-        timeLineDom.appendChild(dom);
+        this.renderHeightLightAreas();
     }
     renderHeightLightAreas() {
         const { heightLightAreas } = this;
@@ -239,7 +253,7 @@ export class TimeLineContainer {
         const endItemIndex = itemCount - 1;
         const endDayTime = (index - 1 + Math.floor(endItemIndex / oneUnitItemCount)) * zoomUnit +
             (endItemIndex % oneUnitItemCount) * gapTime;
-        console.log(startDayTime, endDayTime);
+        // console.log(startDayTime, endDayTime);
         const startTime = this.nowTime - nowDayTime + startDayTime;
         const endTime = this.nowTime - nowDayTime + endDayTime;
         for (let i = 0; i < heightLightAreas.length; i++) {
@@ -253,7 +267,13 @@ export class TimeLineContainer {
             div.style.left = `${left}px`;
             frag.appendChild(div);
         }
+        this.timeHeightLightAreaDom.innerHTML = "";
+        this.timeHeightLightAreaDom.appendChild(frag);
         return frag;
+    }
+    updateHeightLightAreas(heightLightAreas) {
+        this.heightLightAreas = heightLightAreas;
+        this.renderHeightLightAreas();
     }
     renderTimeLineItem(dayTime, needSubItem) {
         const div = document.createElement("div");

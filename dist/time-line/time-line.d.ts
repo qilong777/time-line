@@ -15,9 +15,12 @@ export declare class TimeLineContainer implements TimeLineOption {
     rootDom: HTMLElement;
     timeLineWrapDom: HTMLElement;
     timeLineDom: HTMLElement;
+    timeHeightLightAreaDom: HTMLElement;
     listeners: ListenersOption;
     private readonly repeatCount;
+    private windowEvents;
     constructor(el: MountedEl, option: TimeLineOption);
+    dispose(): void;
     private initEventListeners;
     private initMouseWheelListener;
     private initMouseDragListener;
@@ -30,6 +33,7 @@ export declare class TimeLineContainer implements TimeLineOption {
     render(): void;
     renderTimeLine(): void;
     renderHeightLightAreas(): DocumentFragment;
+    updateHeightLightAreas(heightLightAreas: number[][]): void;
     renderTimeLineItem(dayTime: number, needSubItem: boolean): HTMLDivElement;
     translateTimeLine(): void;
 }

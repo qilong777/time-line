@@ -32,3 +32,4 @@ const timeLine = new TimeLineContainer("#app", {
     },
   },
 });
+// timeLine.dispose();
