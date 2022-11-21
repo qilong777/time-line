@@ -134,6 +134,7 @@ export class TimeLineZoomTool implements ZoomTool {
     if (!Number.isInteger(count)) {
       throw new Error("zoomUnit 不能被一天的时间戳整除");
     }
+    // 获取当前时间在zoomUnit下的索引，如果 zoomUnit = 1h，那么索引就是 0-23
     const index = Math.floor(nowTime / zoomUnit!);
     const offset = nowTime % zoomUnit!;
 

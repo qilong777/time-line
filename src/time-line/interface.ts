@@ -49,7 +49,10 @@ export interface Animation {
 
 export interface ListenersOption {
   // 滑动监听
-  sliding?(second: number): void;
+  sliding?(dayTime: number): void;
+
+  dateChange?(time: number): void;
+
   // 过了一天
   nextDay?(): void;
 
@@ -63,9 +66,14 @@ export interface TimeLineOption {
   // 高度
   // height: number;
 
+  // 时区不同需要添加对应的小时
+  addHour?: number;
   // 初始化时间
   // 一天的毫秒数
-  dayTime?: number;
+  nowTime?: number;
+
+  // [[startTime,endTime],[startTime,endTime]]
+  heightLightAreas?: number[][];
 
   timeTextFormat?: (time: number) => string;
 

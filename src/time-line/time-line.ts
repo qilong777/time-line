@@ -1,4 +1,4 @@
-import { oneDayTime } from "./constant";
+import { oneDayTime, oneHourTime } from "./constant";
 import {
   Animation,
   ListenersOption,
@@ -52,8 +52,19 @@ function formatTime2Text(time: number): string {
 }
 
 export class TimeLineContainer implements TimeLineOption {
-  nowTime = 0.0 * oneDayTime;
-  timeTextFormat = formatTime2Text;
+  addHour = 8;
+  nowTime = new Date().getTime();
+  private nowDayTime = 0.0 * oneDayTime;
+
+  // heightLightAreas = [
+  //   [new Date().getTime(), new Date().getTime() + 1 * oneHourTime],
+  //   [
+  //     new Date().getTime() - 2 * oneHourTime,
+  //     new Date().getTime() - 1 * oneHourTime,
+  //   ],
+  // ];
+  heightLightAreas = [];
+  dayTimeTextFormat = formatTime2Text;
 
   gapWidth = 150;
   itemLineWidth = 1;
@@ -67,6 +78,7 @@ export class TimeLineContainer implements TimeLineOption {
   // 根节点
   rootDom!: HTMLElement;
 
+  timeLineWrapDom!: HTMLElement;
   timeLineDom!: HTMLElement;
 
   listeners: ListenersOption = {};
@@ -76,6 +88,8 @@ export class TimeLineContainer implements TimeLineOption {
   constructor(el: MountedEl, option: TimeLineOption) {
     this.initRootDom(el);
     this.initOption(option);
+
+    this.setDayTimeFromNowTime();
 
     this.render();
 
@@ -89,11 +103,12 @@ export class TimeLineContainer implements TimeLineOption {
   private initEventListeners() {
     this.initMouseWheelListener();
     this.initMouseDragListener();
+    this.initResizeListener();
   }
 
   private initMouseWheelListener() {
     let timer: any = null;
-    this.rootDom.addEventListener("wheel", (event: WheelEvent) => {
+    this.timeLineWrapDom.addEventListener("wheel", (event: WheelEvent) => {
       if (timer) {
         return;
       }
@@ -110,7 +125,7 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   private initMouseDragListener() {
-    this.rootDom.addEventListener("mousedown", (event: MouseEvent) => {
+    this.timeLineWrapDom.addEventListener("mousedown", (event: MouseEvent) => {
       event.preventDefault();
 
       let couldMove = true;
@@ -121,10 +136,10 @@ export class TimeLineContainer implements TimeLineOption {
         getComputedStyle(this.timeLineDom).transform.split(",")[4]
       );
       const { oneUnitItemCount } = this.zoomTool;
-      let { gapWidth, nowTime: startTime } = this;
+      let { gapWidth, nowTime: startTime, nowDayTime: startDayTime } = this;
       const oneUnitWidth = gapWidth * oneUnitItemCount;
       let halfContainerWidth =
-        parseInt(getComputedStyle(this.rootDom).width) / 2;
+        parseInt(getComputedStyle(this.timeLineWrapDom).width) / 2;
       const mouseMove = (event: MouseEvent) => {
         // if (!couldMove) {
         //   return;
@@ -135,17 +150,18 @@ export class TimeLineContainer implements TimeLineOption {
         const diffTime = (diffX / gapWidth) * gapTime;
         let translateX = startTranslateX + diffX;
         this.nowTime = startTime - diffTime;
-        if (this.nowTime < 0) {
-          this.nowTime = oneDayTime + this.nowTime;
+        this.nowDayTime = startDayTime - diffTime;
+        if (this.nowDayTime < 0) {
+          this.nowDayTime = oneDayTime + this.nowDayTime;
           this.listeners.prevDay && this.listeners.prevDay();
         }
-        if (this.nowTime >= oneDayTime) {
-          this.nowTime = this.nowTime % oneDayTime;
+        if (this.nowDayTime >= oneDayTime) {
+          this.nowDayTime = this.nowDayTime % oneDayTime;
           this.listeners.nextDay && this.listeners.nextDay();
         }
-        this.listeners.sliding && this.listeners.sliding(this.nowTime);
+        this.listeners.sliding && this.listeners.sliding(this.nowDayTime);
         if (translateX > -(oneUnitWidth - halfContainerWidth)) {
-          // console.log("右", formatTime2Text(this.nowTime));
+          // console.log("右", formatTime2Text(this.nowDayTime));
 
           this.renderTimeLine();
           this.translateTimeLine();
@@ -155,10 +171,11 @@ export class TimeLineContainer implements TimeLineOption {
           );
           startX = endX;
           startTime = this.nowTime;
+          startDayTime = this.nowDayTime;
           couldMove = false;
           return;
         } else if (translateX < -(2 * oneUnitWidth - halfContainerWidth)) {
-          // console.log("左", formatTime2Text(this.nowTime));
+          // console.log("左", formatTime2Text(this.nowDayTime));
           this.renderTimeLine();
           this.translateTimeLine();
           // startTranslateX = -(oneUnitWidth - halfContainerWidth);
@@ -167,6 +184,7 @@ export class TimeLineContainer implements TimeLineOption {
           );
           startX = endX;
           startTime = this.nowTime;
+          startDayTime = this.nowDayTime;
           couldMove = false;
           return;
         }
@@ -178,10 +196,17 @@ export class TimeLineContainer implements TimeLineOption {
       const mouseUp = (event: MouseEvent) => {
         window.removeEventListener("mousemove", mouseMove);
         window.removeEventListener("mouseup", mouseUp);
+        this.listeners.dateChange && this.listeners.dateChange(this.nowTime);
       };
 
       window.addEventListener("mousemove", mouseMove);
       window.addEventListener("mouseup", mouseUp);
+    });
+  }
+
+  private initResizeListener() {
+    window.addEventListener("resize", () => {
+      this.translateTimeLine();
     });
   }
 
@@ -204,16 +229,16 @@ export class TimeLineContainer implements TimeLineOption {
     }
     this.rootDom = document.createElement("div");
     this.rootDom.className = "time-line-container";
-    this.rootDom.innerHTML = `
-      <div class="time-line-time-pick"></div>
-      
-    `;
     parent.appendChild(this.rootDom);
   }
 
-  setDayTime(nowTime: number) {
+  setNowTime(nowTime: number) {
     this.nowTime = nowTime;
-    this.render();
+    this.translateTimeLine();
+  }
+
+  private setDayTimeFromNowTime() {
+    this.nowDayTime = (this.nowTime + this.addHour * oneHourTime) % oneDayTime;
   }
 
   render() {
@@ -222,22 +247,26 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   renderTimeLine() {
-    if (!this.timeLineDom) {
+    if (!this.timeLineWrapDom) {
+      this.timeLineWrapDom = document.createElement("div");
+      this.timeLineWrapDom.className = "time-line-wrap";
+      this.timeLineWrapDom.innerHTML = `<div class="time-line-time-pick"></div>`;
       this.timeLineDom = document.createElement("div")!;
       this.timeLineDom.className = "time-line";
-      this.rootDom.appendChild(this.timeLineDom);
+      this.timeLineWrapDom.appendChild(this.timeLineDom);
+      this.rootDom.appendChild(this.timeLineWrapDom);
     }
     const {
       timeLineDom,
       gapWidth,
       zoomTool,
-      nowTime,
+      nowDayTime,
       repeatCount,
       itemLineWidth,
     } = this;
     const { oneUnitItemCount, zoomUnit } = zoomTool;
 
-    const { index } = this.zoomTool.getInfoFromZoomTool(nowTime);
+    const { index } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
     const gapTime = this.zoomTool.getGapTime();
 
     timeLineDom.innerHTML = "";
@@ -248,41 +277,111 @@ export class TimeLineContainer implements TimeLineOption {
     timeLineDom.style.width = `${width}px`;
 
     const frag = document.createDocumentFragment();
+
+    // 渲染时间线
     for (let i = 0; i < itemCount; i++) {
-      const time =
+      const dayTime =
         (index - 1 + Math.floor(i / oneUnitItemCount!)) * zoomUnit! +
         (i % oneUnitItemCount) * gapTime!;
 
-      const div = this.renderTimeLineItem(time, i);
-      if (i !== itemCount - 1) {
-        div.style.marginRight = `${gapWidth - itemLineWidth}px`;
-      }
+      const div = this.renderTimeLineItem(dayTime, i !== itemCount - 1);
+      // if (i !== itemCount - 1) {
+      //   div.style.marginRight = `${gapWidth - itemLineWidth}px`;
+      // }
       frag.appendChild(div);
     }
+
     timeLineDom.appendChild(frag);
+
+    //
+    const dom = this.renderHeightLightAreas();
+    timeLineDom.appendChild(dom);
   }
 
-  renderTimeLineItem(time: number, count: number) {
+  renderHeightLightAreas() {
+    const { heightLightAreas } = this;
+    if (!heightLightAreas) {
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    const {
+      timeLineDom,
+      gapWidth,
+      zoomTool,
+      nowDayTime,
+      repeatCount,
+      itemLineWidth,
+    } = this;
+    const { oneUnitItemCount, zoomUnit } = zoomTool;
+
+    const { index } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
+    const gapTime = this.zoomTool.getGapTime();
+
+    const itemCount = oneUnitItemCount! * repeatCount;
+    const startItemIndex = 0;
+    const startDayTime =
+      (index - 1 + Math.floor(startItemIndex / oneUnitItemCount!)) * zoomUnit! +
+      (startItemIndex % oneUnitItemCount) * gapTime!;
+
+    const endItemIndex = itemCount - 1;
+    const endDayTime =
+      (index - 1 + Math.floor(endItemIndex / oneUnitItemCount!)) * zoomUnit! +
+      (endItemIndex % oneUnitItemCount) * gapTime!;
+
+    // console.log(startDayTime, endDayTime);
+
+    const startTime = this.nowTime - nowDayTime + startDayTime;
+    const endTime = this.nowTime - nowDayTime + endDayTime;
+
+    for (let i = 0; i < heightLightAreas.length; i++) {
+      const area = heightLightAreas[i];
+      const [areaStartTime, areaEndTime] = area;
+
+      const width = ((areaEndTime - areaStartTime) / gapTime!) * gapWidth;
+      const left = ((areaStartTime - startTime) / gapTime!) * gapWidth;
+      const div = document.createElement("div");
+      div.className = "time-line-height-light-area";
+      div.style.width = `${width}px`;
+      div.style.left = `${left}px`;
+      frag.appendChild(div);
+    }
+    return frag;
+  }
+
+  renderTimeLineItem(dayTime: number, needSubItem: boolean) {
     const div = document.createElement("div");
     div.className = "time-line-item";
+    let subItemHtml = needSubItem
+      ? `
+    <div class="time-line-item-sub"></div>
+    <div class="time-line-item-sub"></div>
+    <div class="time-line-item-sub"></div>
+    <div class="time-line-item-sub"></div>
+    <div class="time-line-item-end"></div>
+    `
+      : "";
     div.innerHTML = `
-      <div class="time-line-item-line"></div>
-      <p class="time-line-item-time">${this.timeTextFormat(time)}</p>
+      <div class="time-line-item-main"></div>
+      ${subItemHtml}
+      <p class="time-line-item-time">${this.dayTimeTextFormat(dayTime)}</p>
     `;
     return div;
   }
 
   translateTimeLine() {
-    const nowTime = this.nowTime;
+    const nowDayTime = this.nowDayTime;
 
-    const { index, offset } = this.zoomTool.getInfoFromZoomTool(nowTime);
+    const { offset } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
 
     const { oneUnitItemCount, zoomUnit } = this.zoomTool;
     const { gapWidth } = this;
 
     let translateX = (1 + offset / zoomUnit) * oneUnitItemCount! * gapWidth!;
 
-    let halfContainerWidth = parseInt(getComputedStyle(this.rootDom).width) / 2;
+    let halfContainerWidth =
+      parseInt(getComputedStyle(this.timeLineWrapDom).width) / 2;
+    // console.log(halfContainerWidth);
+
     // console.log(offset / zoomUnit, translateX, halfContainerWidth);
     translateX = translateX - halfContainerWidth;
 

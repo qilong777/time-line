@@ -26,12 +26,15 @@ export interface Animation {
     damping?: boolean;
 }
 export interface ListenersOption {
-    sliding?(second: number): void;
+    sliding?(dayTime: number): void;
+    dateChange?(time: number): void;
     nextDay?(): void;
     prevDay?(): void;
 }
 export interface TimeLineOption {
-    dayTime?: number;
+    addHour?: number;
+    nowTime?: number;
+    heightLightAreas?: number[][];
     timeTextFormat?: (time: number) => string;
     gapWidth?: number;
     theme?: TimeLineTheme;

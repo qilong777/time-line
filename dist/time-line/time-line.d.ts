@@ -2,14 +2,18 @@ import { Animation, ListenersOption, MountedEl, TimeLineOption, TimeLineTheme } 
 import { TimeLineZoomTool } from "./time-line-zoom-tool";
 declare function formatTime2Text(time: number): string;
 export declare class TimeLineContainer implements TimeLineOption {
+    addHour: number;
     nowTime: number;
-    timeTextFormat: typeof formatTime2Text;
+    private nowDayTime;
+    heightLightAreas: any[];
+    dayTimeTextFormat: typeof formatTime2Text;
     gapWidth: number;
     itemLineWidth: number;
     theme: TimeLineTheme;
     zoomTool: TimeLineZoomTool;
     animation: Animation;
     rootDom: HTMLElement;
+    timeLineWrapDom: HTMLElement;
     timeLineDom: HTMLElement;
     listeners: ListenersOption;
     private readonly repeatCount;
@@ -17,13 +21,16 @@ export declare class TimeLineContainer implements TimeLineOption {
     private initEventListeners;
     private initMouseWheelListener;
     private initMouseDragListener;
+    private initResizeListener;
     zoomCb(): void;
     initOption(option: TimeLineOption): void;
     initRootDom(el: MountedEl): void;
-    setDayTime(nowTime: number): void;
+    setNowTime(nowTime: number): void;
+    private setDayTimeFromNowTime;
     render(): void;
     renderTimeLine(): void;
-    renderTimeLineItem(time: number, count: number): HTMLDivElement;
+    renderHeightLightAreas(): DocumentFragment;
+    renderTimeLineItem(dayTime: number, needSubItem: boolean): HTMLDivElement;
     translateTimeLine(): void;
 }
 export {};

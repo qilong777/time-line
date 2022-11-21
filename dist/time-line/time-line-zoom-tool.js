@@ -1,6 +1,6 @@
 import { oneDayTime, oneHourTime, oneMinuteTime } from "./constant";
-var TimeLineZoomTool = /** @class */ (function () {
-    function TimeLineZoomTool() {
+export class TimeLineZoomTool {
+    constructor() {
         // 是否展示
         this.show = true;
         this.bottom = 5;
@@ -22,28 +22,31 @@ var TimeLineZoomTool = /** @class */ (function () {
         this.timeLineZoomToolDom.className = "time-line-zoom-tool";
         this.initListeners();
     }
-    TimeLineZoomTool.prototype.injectZoomCb = function (cb) {
+    injectZoomCb(cb) {
         this.zoomCb.push(cb);
-    };
-    TimeLineZoomTool.prototype.callZoomCb = function () {
-        var _this = this;
-        this.zoomCb.forEach(function (cb) { return cb(_this.zoomUnit); });
-    };
-    TimeLineZoomTool.prototype.renderTimeLineZoomTool = function (parent) {
+    }
+    callZoomCb() {
+        this.zoomCb.forEach((cb) => cb(this.zoomUnit));
+    }
+    renderTimeLineZoomTool(parent) {
         parent.appendChild(this.timeLineZoomToolDom);
-        var _a = this, show = _a.show, bottom = _a.bottom, right = _a.right, zoomUnit = _a.zoomUnit;
+        const { show, bottom, right, zoomUnit } = this;
         this.timeLineZoomToolDom.style.display = show ? "block" : "none";
-        this.timeLineZoomToolDom.innerHTML = "\n    <div class=\"time-line-zoom-in time-line-zoom disable\">-</div>\n    <div class=\"time-line-zoom-value\">0</div>\n    <div class=\"time-line-zoom-out time-line-zoom\">+</div>\n    ";
+        this.timeLineZoomToolDom.innerHTML = `
+    <div class="time-line-zoom-in time-line-zoom disable">-</div>
+    <div class="time-line-zoom-value">0</div>
+    <div class="time-line-zoom-out time-line-zoom">+</div>
+    `;
         this.zoomInDom =
             this.timeLineZoomToolDom.querySelector(".time-line-zoom-in");
         this.zoomOutDom = this.timeLineZoomToolDom.querySelector(".time-line-zoom-out");
         this.zoomValueDom = this.timeLineZoomToolDom.querySelector(".time-line-zoom-value");
         this.updateStatus();
-    };
-    TimeLineZoomTool.prototype.updateStatus = function () {
-        var _a = this, zoomUnit = _a.zoomUnit, zoomUnitRange = _a.zoomUnitRange;
-        var maxZoomUnit = zoomUnitRange[0];
-        var minZoomUnit = zoomUnitRange[zoomUnitRange.length - 1];
+    }
+    updateStatus() {
+        const { zoomUnit, zoomUnitRange } = this;
+        const maxZoomUnit = zoomUnitRange[0];
+        const minZoomUnit = zoomUnitRange[zoomUnitRange.length - 1];
         if (zoomUnit === maxZoomUnit) {
             this.zoomInDom.classList.add("disable");
         }
@@ -57,72 +60,70 @@ var TimeLineZoomTool = /** @class */ (function () {
             this.zoomOutDom.classList.remove("disable");
         }
         this.zoomValueDom.innerText = this.getZoomUnitText();
-    };
-    TimeLineZoomTool.prototype.initListeners = function () {
-        var _this = this;
-        this.timeLineZoomToolDom.addEventListener("click", function (event) {
-            var target = event.target;
+    }
+    initListeners() {
+        this.timeLineZoomToolDom.addEventListener("click", (event) => {
+            const target = event.target;
             if (target instanceof HTMLElement) {
-                var className = target.className;
+                const className = target.className;
                 if (className.includes("time-line-zoom-in")) {
-                    _this.zoomIn();
+                    this.zoomIn();
                 }
                 else if (className.includes("time-line-zoom-out")) {
-                    _this.zoomOut();
+                    this.zoomOut();
                 }
             }
         });
-    };
+    }
     // 缩小
-    TimeLineZoomTool.prototype.zoomIn = function () {
-        var index = this.zoomUnitRange.indexOf(this.zoomUnit);
+    zoomIn() {
+        const index = this.zoomUnitRange.indexOf(this.zoomUnit);
         if (index === 0) {
             return;
         }
         this.zoomUnit = this.zoomUnitRange[index - 1];
         this.updateStatus();
         this.callZoomCb();
-    };
+    }
     // 放大
-    TimeLineZoomTool.prototype.zoomOut = function () {
-        var index = this.zoomUnitRange.indexOf(this.zoomUnit);
+    zoomOut() {
+        const index = this.zoomUnitRange.indexOf(this.zoomUnit);
         if (index === this.zoomUnitRange.length - 1) {
             return;
         }
         this.zoomUnit = this.zoomUnitRange[index + 1];
         this.updateStatus();
         this.callZoomCb();
-    };
-    TimeLineZoomTool.prototype.getInfoFromZoomTool = function (nowTime) {
-        var _a = this, oneUnitItemCount = _a.oneUnitItemCount, zoomUnit = _a.zoomUnit;
-        var count = oneDayTime / zoomUnit;
+    }
+    getInfoFromZoomTool(nowTime) {
+        const { oneUnitItemCount, zoomUnit } = this;
+        const count = oneDayTime / zoomUnit;
         if (!Number.isInteger(count)) {
             throw new Error("zoomUnit 不能被一天的时间戳整除");
         }
-        var index = Math.floor(nowTime / zoomUnit);
-        var offset = nowTime % zoomUnit;
+        // 获取当前时间在zoomUnit下的索引，如果 zoomUnit = 1h，那么索引就是 0-23
+        const index = Math.floor(nowTime / zoomUnit);
+        const offset = nowTime % zoomUnit;
         return {
-            index: index,
-            offset: offset,
+            index,
+            offset,
         };
-    };
-    TimeLineZoomTool.prototype.getGapTime = function () {
-        var _a = this, oneUnitItemCount = _a.oneUnitItemCount, zoomUnit = _a.zoomUnit;
-        var gapTime = zoomUnit / oneUnitItemCount;
+    }
+    getGapTime() {
+        const { oneUnitItemCount, zoomUnit } = this;
+        const gapTime = zoomUnit / oneUnitItemCount;
         if (!Number.isInteger(gapTime)) {
             throw new Error("zoomUnit / oneUnitItemCount 必须是整数");
         }
         return gapTime;
-    };
-    TimeLineZoomTool.prototype.getZoomUnitText = function () {
-        var zoomUnit = this.zoomUnit;
+    }
+    getZoomUnitText() {
+        const { zoomUnit } = this;
         if (zoomUnit / oneHourTime >= 1) {
-            return "".concat(zoomUnit / oneHourTime, "h");
+            return `${zoomUnit / oneHourTime}h`;
         }
         else {
-            return "".concat(zoomUnit / oneMinuteTime, "m");
+            return `${zoomUnit / oneMinuteTime}m`;
         }
-    };
-    return TimeLineZoomTool;
-}());
-export { TimeLineZoomTool };
+    }
+}
