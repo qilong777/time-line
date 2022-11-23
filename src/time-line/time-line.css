@@ -30,10 +30,6 @@
   float: left;
   position: relative;
   top: calc(100% - 7px);
-  width: 90px;
-  /* width: 1px;
-  height: 7px;
-  background-color: #979797; */
 }
 .time-line .time-line-item .time-line-item-main{
   width: 1px;

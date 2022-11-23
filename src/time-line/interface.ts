@@ -23,6 +23,7 @@ export interface ZoomTool {
   left?: number;
   right?: number;
 
+  zoomUnitRange?: number[];
   // 缩放单位
   zoomUnit?: number;
 
@@ -49,9 +50,12 @@ export interface Animation {
 
 export interface ListenersOption {
   // 滑动监听
-  sliding?(dayTime: number): void;
+  dateChanging?(dayTime: number): void;
 
-  dateChange?(time: number): void;
+  //
+  dateChangeStart?(time: number): void;
+
+  dateChangeEnd?(time: number): void;
 
   // 过了一天
   nextDay?(): void;
@@ -66,8 +70,6 @@ export interface TimeLineOption {
   // 高度
   // height: number;
 
-  // 时区不同需要添加对应的小时
-  addHour?: number;
   // 初始化时间
   // 一天的毫秒数
   nowTime?: number;

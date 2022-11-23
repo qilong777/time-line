@@ -1,4 +1,5 @@
-import { oneDayTime, oneHourTime } from "./constant";
+import { traverseAssignObj } from "./common";
+import { oneDayTime, oneHourTime, oneMinuteTime } from "./constant";
 import {
   Animation,
   ListenersOption,
@@ -17,19 +18,6 @@ const defaultTheme: TimeLineTheme = {
   lineWidth: 1,
   // 线条高度
   lineHeight: 20,
-};
-
-const defaultZoomTool: ZoomTool = {
-  // 是否展示
-  show: true,
-
-  bottom: 5,
-  right: 5,
-
-  // 缩放单位
-  zoomUnit: oneDayTime,
-  // 一个单位存在的时间戳个数
-  oneUnitItemCount: 12,
 };
 
 const defaultAnimation: Animation = {
@@ -52,40 +40,51 @@ function formatTime2Text(time: number): string {
 }
 
 export class TimeLineContainer implements TimeLineOption {
-  addHour = 8;
+  // 当前时间戳
   nowTime = new Date().getTime();
+  // 当前的时间戳取余一天的时间戳
   private nowDayTime = 0.0 * oneDayTime;
 
-  // heightLightAreas = [
-  //   [new Date().getTime(), new Date().getTime() + 1 * oneHourTime],
-  //   [
-  //     new Date().getTime() - 2 * oneHourTime,
-  //     new Date().getTime() - 1 * oneHourTime,
-  //   ],
-  // ];
+  // 高亮的区域
   heightLightAreas = [];
+
+  // 时间文本的格式化函数，返回字符串
   dayTimeTextFormat = formatTime2Text;
 
+  // 2个大段时间之间的间隔宽度
   gapWidth = 90;
+  // 线的宽度
   itemLineWidth = 1;
 
+  // 主题
   theme = defaultTheme;
 
+  // 缩放工具
   zoomTool = new TimeLineZoomTool();
 
+  // 动画配置
   animation = defaultAnimation;
 
   // 根节点
-  rootDom!: HTMLElement;
+  private rootDom!: HTMLElement;
 
-  timeLineWrapDom!: HTMLElement;
-  timeLineDom!: HTMLElement;
-  timeHeightLightAreaDom!: HTMLElement;
+  // 时间线包裹节点，宽度固定
+  private timeLineWrapDom!: HTMLElement;
+  // 时间线内容的节点，宽度根据配置项决定
+  private timeLineDom!: HTMLElement;
 
+  // 高亮区域的父节点
+  private timeHeightLightAreaWrapDom!: HTMLElement;
+
+  // 监听回调
   listeners: ListenersOption = {};
 
+  // 重复次数，一般不会改变
+  // 1[234]56
+  // 括号中是展示的时间
   private readonly repeatCount = 3;
 
+  // 记录监听的window事件，用于销毁
   private windowEvents: any = {};
 
   constructor(el: MountedEl, option: TimeLineOption) {
@@ -103,6 +102,7 @@ export class TimeLineContainer implements TimeLineOption {
     this.initEventListeners();
   }
 
+  // 释放内存
   dispose() {
     for (const key in this.windowEvents) {
       if (this.windowEvents.hasOwnProperty(key)) {
@@ -125,6 +125,7 @@ export class TimeLineContainer implements TimeLineOption {
       if (timer) {
         return;
       }
+      // 限流
       timer = setTimeout(() => {
         if (event.deltaY > 0) {
           this.zoomTool.zoomIn();
@@ -141,7 +142,6 @@ export class TimeLineContainer implements TimeLineOption {
     this.timeLineWrapDom.addEventListener("mousedown", (event: MouseEvent) => {
       event.preventDefault();
 
-      let couldMove = true;
       const gapTime = this.zoomTool.getGapTime();
       let startX = event.clientX;
 
@@ -154,9 +154,6 @@ export class TimeLineContainer implements TimeLineOption {
       let halfContainerWidth =
         parseInt(getComputedStyle(this.timeLineWrapDom).width) / 2;
       const mouseMove = (event: MouseEvent) => {
-        // if (!couldMove) {
-        //   return;
-        // }
         let endX = event.clientX;
         const diffX = endX - startX;
 
@@ -172,7 +169,8 @@ export class TimeLineContainer implements TimeLineOption {
           this.nowDayTime = this.nowDayTime % oneDayTime;
           this.listeners.nextDay && this.listeners.nextDay();
         }
-        this.listeners.sliding && this.listeners.sliding(this.nowDayTime);
+        this.listeners.dateChanging &&
+          this.listeners.dateChanging(this.nowDayTime);
         if (translateX > -(oneUnitWidth - halfContainerWidth)) {
           // console.log("右", formatTime2Text(this.nowDayTime));
 
@@ -185,7 +183,6 @@ export class TimeLineContainer implements TimeLineOption {
           startX = endX;
           startTime = this.nowTime;
           startDayTime = this.nowDayTime;
-          couldMove = false;
           return;
         } else if (translateX < -(2 * oneUnitWidth - halfContainerWidth)) {
           // console.log("左", formatTime2Text(this.nowDayTime));
@@ -198,7 +195,6 @@ export class TimeLineContainer implements TimeLineOption {
           startX = endX;
           startTime = this.nowTime;
           startDayTime = this.nowDayTime;
-          couldMove = false;
           return;
         }
         // console.log("move", translateX);
@@ -209,9 +205,11 @@ export class TimeLineContainer implements TimeLineOption {
       const mouseUp = (event: MouseEvent) => {
         window.removeEventListener("mousemove", mouseMove);
         window.removeEventListener("mouseup", mouseUp);
-        this.listeners.dateChange && this.listeners.dateChange(this.nowTime);
+        this.listeners.dateChangeEnd &&
+          this.listeners.dateChangeEnd(this.nowTime);
       };
-
+      this.listeners.dateChangeStart &&
+        this.listeners.dateChangeStart(this.nowTime);
       window.addEventListener("mousemove", mouseMove);
       window.addEventListener("mouseup", mouseUp);
     });
@@ -231,10 +229,7 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   initOption(option: TimeLineOption) {
-    Object.assign(this, option);
-    Object.assign(this.theme, defaultAnimation, option.theme);
-    Object.assign(this.zoomTool, defaultZoomTool, option.zoomTool);
-    Object.assign(this.animation, defaultAnimation, option.animation);
+    traverseAssignObj(this, option);
   }
 
   initRootDom(el: MountedEl) {
@@ -254,7 +249,11 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   private setDayTimeFromNowTime() {
-    this.nowDayTime = (this.nowTime + this.addHour * oneHourTime) % oneDayTime;
+    const date = new Date();
+    this.nowDayTime =
+      date.getHours() * oneHourTime +
+      (date.getMinutes() + 1) * oneMinuteTime +
+      date.getSeconds() * 1000;
   }
 
   render() {
@@ -271,8 +270,8 @@ export class TimeLineContainer implements TimeLineOption {
       this.timeLineDom.className = "time-line";
       this.timeLineWrapDom.appendChild(this.timeLineDom);
 
-      this.timeHeightLightAreaDom = document.createElement("div");
-      this.timeHeightLightAreaDom.className = "time-line-height-light-wrap";
+      this.timeHeightLightAreaWrapDom = document.createElement("div");
+      this.timeHeightLightAreaWrapDom.className = "time-line-height-light-wrap";
 
       this.rootDom.appendChild(this.timeLineWrapDom);
     }
@@ -313,7 +312,7 @@ export class TimeLineContainer implements TimeLineOption {
 
     timeLineDom.appendChild(frag);
 
-    timeLineDom.appendChild(this.timeHeightLightAreaDom);
+    timeLineDom.appendChild(this.timeHeightLightAreaWrapDom);
     //
     this.renderHeightLightAreas();
   }
@@ -365,8 +364,8 @@ export class TimeLineContainer implements TimeLineOption {
       div.style.left = `${left}px`;
       frag.appendChild(div);
     }
-    this.timeHeightLightAreaDom.innerHTML = "";
-    this.timeHeightLightAreaDom.appendChild(frag);
+    this.timeHeightLightAreaWrapDom.innerHTML = "";
+    this.timeHeightLightAreaWrapDom.appendChild(frag);
     return frag;
   }
 
@@ -377,6 +376,7 @@ export class TimeLineContainer implements TimeLineOption {
 
   renderTimeLineItem(dayTime: number, needSubItem: boolean) {
     const div = document.createElement("div");
+    div.style.width = this.gapWidth + "px";
     div.className = "time-line-item";
     let subItemHtml = needSubItem
       ? `

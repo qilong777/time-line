@@ -3,7 +3,6 @@ import { TimeLineContainer } from "./time-line/time-line";
 import { oneHourTime } from "./time-line/constant";
 
 const timeLine = new TimeLineContainer("#app", {
-  gapWidth: 90,
   nowTime: new Date().getTime(),
   heightLightAreas: [
     [new Date().getTime(), new Date().getTime() + 1 * oneHourTime],
@@ -13,7 +12,10 @@ const timeLine = new TimeLineContainer("#app", {
     ],
   ],
   listeners: {
-    dateChange(time: number) {
+    dateChangeStart() {
+      console.log("dateChangeStart");
+    },
+    dateChangeEnd(time: number) {
       let date = new Date(time);
       let hour = date.getHours();
       let minute = date.getMinutes();
@@ -32,4 +34,8 @@ const timeLine = new TimeLineContainer("#app", {
     },
   },
 });
-// timeLine.dispose();
+console.log(timeLine);
+
+setInterval(() => {
+  timeLine.setNowTime(new Date().getTime());
+}, 200);
