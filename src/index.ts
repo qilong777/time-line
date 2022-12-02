@@ -44,7 +44,6 @@ console.log(timeLine);
 // }, 200);
 
 const change = function () {
-  console.log(111);
   console.log(new Date(timeLine.nowTime + 1000 * 60));
 
   timeLine.setNowTime(timeLine.nowTime + 1000 * 60);

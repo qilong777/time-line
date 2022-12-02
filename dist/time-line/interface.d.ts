@@ -13,6 +13,7 @@ export interface ZoomTool {
     bottom?: number;
     left?: number;
     right?: number;
+    zoomUnitRange?: number[];
     zoomUnit?: number;
     oneUnitItemCount?: number;
     zoomIcon?: {
@@ -26,14 +27,14 @@ export interface Animation {
     damping?: boolean;
 }
 export interface ListenersOption {
-    sliding?(dayTime: number): void;
-    dateChange?(time: number): void;
+    dateChanging?(dayTime: number): void;
+    dateChangeStart?(time: number): void;
+    dateChangeEnd?(time: number): void;
     nextDay?(): void;
     prevDay?(): void;
 }
 export interface TimeLineOption {
-    addHour?: number;
-    nowTime?: number;
+    nowTimeDate?: Date;
     heightLightAreas?: number[][];
     timeTextFormat?: (time: number) => string;
     gapWidth?: number;

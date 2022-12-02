@@ -1,4 +1,5 @@
-import { oneDayTime, oneHourTime } from "./constant";
+import { traverseAssignObj } from "./common";
+import { oneDayTime, oneHourTime, oneMinuteTime } from "./constant";
 import { TimeLineZoomTool } from "./time-line-zoom-tool";
 const defaultTheme = {
     backgroundColor: "#000",
@@ -8,16 +9,6 @@ const defaultTheme = {
     lineWidth: 1,
     // 线条高度
     lineHeight: 20,
-};
-const defaultZoomTool = {
-    // 是否展示
-    show: true,
-    bottom: 5,
-    right: 5,
-    // 缩放单位
-    zoomUnit: oneDayTime,
-    // 一个单位存在的时间戳个数
-    oneUnitItemCount: 12,
 };
 const defaultAnimation = {
     // 是否有效
@@ -35,35 +26,50 @@ function formatTime2Text(time) {
     return `${hour}:${minute}`;
 }
 export class TimeLineContainer {
+    get nowTime() {
+        return this.nowTimeDate.getTime();
+    }
+    get nowDayTime() {
+        const date = this.nowTimeDate;
+        return (date.getHours() * oneHourTime +
+            date.getMinutes() * oneMinuteTime +
+            date.getSeconds() * 1000);
+    }
     constructor(el, option) {
-        this.addHour = 8;
-        this.nowTime = new Date().getTime();
-        this.nowDayTime = 0.0 * oneDayTime;
-        // heightLightAreas = [
-        //   [new Date().getTime(), new Date().getTime() + 1 * oneHourTime],
-        //   [
-        //     new Date().getTime() - 2 * oneHourTime,
-        //     new Date().getTime() - 1 * oneHourTime,
-        //   ],
-        // ];
+        // 当前时间戳
+        this.nowTimeDate = new Date();
+        // 当前的时间戳取余一天的时间戳
+        // private nowDayTime = 0.0 * oneDayTime;
+        // 高亮的区域
         this.heightLightAreas = [];
+        // 时间文本的格式化函数，返回字符串
         this.dayTimeTextFormat = formatTime2Text;
+        // 2个大段时间之间的间隔宽度
         this.gapWidth = 90;
+        // 线的宽度
         this.itemLineWidth = 1;
+        // 主题
         this.theme = defaultTheme;
+        // 缩放工具
         this.zoomTool = new TimeLineZoomTool();
+        // 动画配置
         this.animation = defaultAnimation;
+        // 监听回调
         this.listeners = {};
+        // 重复次数，一般不会改变
+        // 1[234]56
+        // 括号中是展示的时间
         this.repeatCount = 3;
+        // 记录监听的window事件，用于销毁
         this.windowEvents = {};
+        this.lastIndex = undefined;
         this.initRootDom(el);
         this.initOption(option);
-        this.setDayTimeFromNowTime();
         this.render();
         this.zoomTool.injectZoomCb(this.zoomCb.bind(this));
-        this.translateTimeLine();
         this.initEventListeners();
     }
+    // 释放内存
     dispose() {
         for (const key in this.windowEvents) {
             if (this.windowEvents.hasOwnProperty(key)) {
@@ -84,6 +90,7 @@ export class TimeLineContainer {
             if (timer) {
                 return;
             }
+            // 限流
             timer = setTimeout(() => {
                 if (event.deltaY > 0) {
                     this.zoomTool.zoomIn();
@@ -99,84 +106,57 @@ export class TimeLineContainer {
     initMouseDragListener() {
         this.timeLineWrapDom.addEventListener("mousedown", (event) => {
             event.preventDefault();
-            let couldMove = true;
             const gapTime = this.zoomTool.getGapTime();
             let startX = event.clientX;
-            let startTranslateX = parseInt(getComputedStyle(this.timeLineDom).transform.split(",")[4]);
-            const { oneUnitItemCount } = this.zoomTool;
             let { gapWidth, nowTime: startTime, nowDayTime: startDayTime } = this;
-            const oneUnitWidth = gapWidth * oneUnitItemCount;
-            let halfContainerWidth = parseInt(getComputedStyle(this.timeLineWrapDom).width) / 2;
             const mouseMove = (event) => {
-                // if (!couldMove) {
-                //   return;
-                // }
                 let endX = event.clientX;
                 const diffX = endX - startX;
                 const diffTime = (diffX / gapWidth) * gapTime;
-                let translateX = startTranslateX + diffX;
-                this.nowTime = startTime - diffTime;
-                this.nowDayTime = startDayTime - diffTime;
-                if (this.nowDayTime < 0) {
-                    this.nowDayTime = oneDayTime + this.nowDayTime;
+                const nowTime = startTime - diffTime;
+                this.setNowTime(nowTime);
+                const nowDayTime = startDayTime - diffTime;
+                if (nowDayTime < 0) {
+                    this.renderHeightLightAreas();
                     this.listeners.prevDay && this.listeners.prevDay();
+                    startX = endX;
+                    startTime = this.nowTime;
+                    startDayTime = this.nowDayTime;
                 }
-                if (this.nowDayTime >= oneDayTime) {
-                    this.nowDayTime = this.nowDayTime % oneDayTime;
+                if (nowDayTime >= oneDayTime) {
+                    this.renderHeightLightAreas();
                     this.listeners.nextDay && this.listeners.nextDay();
-                }
-                this.listeners.sliding && this.listeners.sliding(this.nowDayTime);
-                if (translateX > -(oneUnitWidth - halfContainerWidth)) {
-                    // console.log("右", formatTime2Text(this.nowDayTime));
-                    this.renderTimeLine();
-                    this.translateTimeLine();
-                    // startTranslateX = -(2 * oneUnitWidth - halfContainerWidth);
-                    startTranslateX = parseInt(getComputedStyle(this.timeLineDom).transform.split(",")[4]);
                     startX = endX;
                     startTime = this.nowTime;
                     startDayTime = this.nowDayTime;
-                    couldMove = false;
-                    return;
                 }
-                else if (translateX < -(2 * oneUnitWidth - halfContainerWidth)) {
-                    // console.log("左", formatTime2Text(this.nowDayTime));
-                    this.renderTimeLine();
-                    this.translateTimeLine();
-                    // startTranslateX = -(oneUnitWidth - halfContainerWidth);
-                    startTranslateX = parseInt(getComputedStyle(this.timeLineDom).transform.split(",")[4]);
-                    startX = endX;
-                    startTime = this.nowTime;
-                    startDayTime = this.nowDayTime;
-                    couldMove = false;
-                    return;
-                }
-                // console.log("move", translateX);
-                this.timeLineDom.style.transform = `translateX(${translateX}px)`;
+                this.listeners.dateChanging &&
+                    this.listeners.dateChanging(this.nowDayTime);
+                this.renderTimeLine();
             };
             const mouseUp = (event) => {
                 window.removeEventListener("mousemove", mouseMove);
                 window.removeEventListener("mouseup", mouseUp);
-                this.listeners.dateChange && this.listeners.dateChange(this.nowTime);
+                this.listeners.dateChangeEnd &&
+                    this.listeners.dateChangeEnd(this.nowTime);
             };
+            this.listeners.dateChangeStart &&
+                this.listeners.dateChangeStart(this.nowTime);
             window.addEventListener("mousemove", mouseMove);
             window.addEventListener("mouseup", mouseUp);
         });
     }
     initResizeListener() {
         this.windowEvents.resize = () => {
-            this.translateTimeLine();
+            this.renderTimeLine(true);
         };
         window.addEventListener("resize", this.windowEvents.resize);
     }
     zoomCb() {
-        this.renderTimeLine();
-        this.translateTimeLine();
+        this.renderTimeLine(true);
     }
     initOption(option) {
-        Object.assign(this, option);
-        Object.assign(this.theme, defaultAnimation, option.theme);
-        Object.assign(this.zoomTool, defaultZoomTool, option.zoomTool);
-        Object.assign(this.animation, defaultAnimation, option.animation);
+        traverseAssignObj(this, option);
     }
     initRootDom(el) {
         let parent = typeof el === "string" ? document.querySelector(el) : el;
@@ -188,18 +168,14 @@ export class TimeLineContainer {
         parent.appendChild(this.rootDom);
     }
     setNowTime(nowTime) {
-        this.nowTime = nowTime;
-        this.setDayTimeFromNowTime();
-        this.translateTimeLine();
-    }
-    setDayTimeFromNowTime() {
-        this.nowDayTime = (this.nowTime + this.addHour * oneHourTime) % oneDayTime;
+        this.nowTimeDate.setTime(nowTime);
+        this.renderTimeLine();
     }
     render() {
-        this.renderTimeLine();
+        this.renderTimeLine(true);
         this.zoomTool.renderTimeLineZoomTool(this.rootDom);
     }
-    renderTimeLine() {
+    renderTimeLine(force = false) {
         if (!this.timeLineWrapDom) {
             this.timeLineWrapDom = document.createElement("div");
             this.timeLineWrapDom.className = "time-line-wrap";
@@ -207,13 +183,20 @@ export class TimeLineContainer {
             this.timeLineDom = document.createElement("div");
             this.timeLineDom.className = "time-line";
             this.timeLineWrapDom.appendChild(this.timeLineDom);
-            this.timeHeightLightAreaDom = document.createElement("div");
-            this.timeHeightLightAreaDom.className = "time-line-height-light-wrap";
+            this.timeHeightLightAreaWrapDom = document.createElement("div");
+            this.timeHeightLightAreaWrapDom.className = "time-line-height-light-wrap";
             this.rootDom.appendChild(this.timeLineWrapDom);
         }
         const { timeLineDom, gapWidth, zoomTool, nowDayTime, repeatCount, itemLineWidth, } = this;
         const { oneUnitItemCount, zoomUnit } = zoomTool;
         const { index } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
+        if (!force && index === this.lastIndex) {
+            this.translateTimeLine();
+            return;
+        }
+        else {
+            this.lastIndex = index;
+        }
         const gapTime = this.zoomTool.getGapTime();
         timeLineDom.innerHTML = "";
         // 获取总宽度
@@ -232,8 +215,9 @@ export class TimeLineContainer {
             frag.appendChild(div);
         }
         timeLineDom.appendChild(frag);
-        timeLineDom.appendChild(this.timeHeightLightAreaDom);
+        timeLineDom.appendChild(this.timeHeightLightAreaWrapDom);
         //
+        this.translateTimeLine();
         this.renderHeightLightAreas();
     }
     renderHeightLightAreas() {
@@ -267,8 +251,8 @@ export class TimeLineContainer {
             div.style.left = `${left}px`;
             frag.appendChild(div);
         }
-        this.timeHeightLightAreaDom.innerHTML = "";
-        this.timeHeightLightAreaDom.appendChild(frag);
+        this.timeHeightLightAreaWrapDom.innerHTML = "";
+        this.timeHeightLightAreaWrapDom.appendChild(frag);
         return frag;
     }
     updateHeightLightAreas(heightLightAreas) {
@@ -277,6 +261,7 @@ export class TimeLineContainer {
     }
     renderTimeLineItem(dayTime, needSubItem) {
         const div = document.createElement("div");
+        div.style.width = this.gapWidth + "px";
         div.className = "time-line-item";
         let subItemHtml = needSubItem
             ? `

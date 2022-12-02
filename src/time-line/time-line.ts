@@ -167,12 +167,14 @@ export class TimeLineContainer implements TimeLineOption {
         this.setNowTime(nowTime);
         const nowDayTime = startDayTime - diffTime;
         if (nowDayTime < 0) {
+          this.renderHeightLightAreas();
           this.listeners.prevDay && this.listeners.prevDay();
           startX = endX;
           startTime = this.nowTime;
           startDayTime = this.nowDayTime;
         }
         if (nowDayTime >= oneDayTime) {
+          this.renderHeightLightAreas();
           this.listeners.nextDay && this.listeners.nextDay();
           startX = endX;
           startTime = this.nowTime;
@@ -199,14 +201,14 @@ export class TimeLineContainer implements TimeLineOption {
 
   private initResizeListener() {
     this.windowEvents.resize = () => {
-      this.renderTimeLine();
+      this.renderTimeLine(true);
     };
 
     window.addEventListener("resize", this.windowEvents.resize);
   }
 
   zoomCb() {
-    this.renderTimeLine();
+    this.renderTimeLine(true);
   }
 
   initOption(option: TimeLineOption) {
@@ -229,11 +231,11 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   render() {
-    this.renderTimeLine();
+    this.renderTimeLine(true);
     this.zoomTool.renderTimeLineZoomTool(this.rootDom);
   }
 
-  renderTimeLine() {
+  renderTimeLine(force = false) {
     if (!this.timeLineWrapDom) {
       this.timeLineWrapDom = document.createElement("div");
       this.timeLineWrapDom.className = "time-line-wrap";
@@ -259,7 +261,7 @@ export class TimeLineContainer implements TimeLineOption {
 
     const { index } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
 
-    if (index === this.lastIndex) {
+    if (!force && index === this.lastIndex) {
       this.translateTimeLine();
       return;
     } else {
@@ -293,9 +295,8 @@ export class TimeLineContainer implements TimeLineOption {
 
     timeLineDom.appendChild(this.timeHeightLightAreaWrapDom);
     //
-    this.renderHeightLightAreas();
-
     this.translateTimeLine();
+    this.renderHeightLightAreas();
   }
 
   renderHeightLightAreas() {
@@ -315,6 +316,7 @@ export class TimeLineContainer implements TimeLineOption {
     const { oneUnitItemCount, zoomUnit } = zoomTool;
 
     const { index } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
+
     const gapTime = this.zoomTool.getGapTime();
 
     const itemCount = oneUnitItemCount! * repeatCount;
