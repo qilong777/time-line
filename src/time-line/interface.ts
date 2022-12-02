@@ -72,7 +72,7 @@ export interface TimeLineOption {
 
   // 初始化时间
   // 一天的毫秒数
-  nowTime?: number;
+  nowTimeDate?: Date;
 
   // [[startTime,endTime],[startTime,endTime]]
   heightLightAreas?: number[][];

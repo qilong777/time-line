@@ -3,7 +3,7 @@ import { TimeLineContainer } from "./time-line/time-line";
 import { oneHourTime } from "./time-line/constant";
 
 const timeLine = new TimeLineContainer("#app", {
-  nowTime: new Date().getTime(),
+  nowTimeDate: new Date(),
   heightLightAreas: [
     [new Date().getTime(), new Date().getTime() + 1 * oneHourTime],
     [
@@ -27,15 +27,27 @@ const timeLine = new TimeLineContainer("#app", {
       console.log("dateChange", new Date(time));
     },
     prevDay: () => {
+      console.log(timeLine.nowTimeDate);
+
       console.log("prevDay");
     },
     nextDay: () => {
+      console.log(timeLine.nowTimeDate);
       console.log("nextDay");
     },
   },
 });
 console.log(timeLine);
 
-setInterval(() => {
-  timeLine.setNowTime(new Date().getTime());
-}, 200);
+// setInterval(() => {
+//   timeLine.setNowTime(new Date().getTime());
+// }, 200);
+
+const change = function () {
+  console.log(111);
+  console.log(new Date(timeLine.nowTime + 1000 * 60));
+
+  timeLine.setNowTime(timeLine.nowTime + 1000 * 60);
+};
+
+document.querySelector("#button").addEventListener("click", change);

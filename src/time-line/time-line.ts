@@ -41,9 +41,9 @@ function formatTime2Text(time: number): string {
 
 export class TimeLineContainer implements TimeLineOption {
   // 当前时间戳
-  nowTime = new Date().getTime();
+  nowTimeDate = new Date();
   // 当前的时间戳取余一天的时间戳
-  private nowDayTime = 0.0 * oneDayTime;
+  // private nowDayTime = 0.0 * oneDayTime;
 
   // 高亮的区域
   heightLightAreas = [];
@@ -87,17 +87,27 @@ export class TimeLineContainer implements TimeLineOption {
   // 记录监听的window事件，用于销毁
   private windowEvents: any = {};
 
+  get nowTime() {
+    return this.nowTimeDate.getTime();
+  }
+  get nowDayTime() {
+    const date = this.nowTimeDate;
+    return (
+      date.getHours() * oneHourTime +
+      date.getMinutes() * oneMinuteTime +
+      date.getSeconds() * 1000
+    );
+  }
+
+  private lastIndex = undefined;
+
   constructor(el: MountedEl, option: TimeLineOption) {
     this.initRootDom(el);
     this.initOption(option);
 
-    this.setDayTimeFromNowTime();
-
     this.render();
 
     this.zoomTool.injectZoomCb(this.zoomCb.bind(this));
-
-    this.translateTimeLine();
 
     this.initEventListeners();
   }
@@ -145,61 +155,33 @@ export class TimeLineContainer implements TimeLineOption {
       const gapTime = this.zoomTool.getGapTime();
       let startX = event.clientX;
 
-      let startTranslateX = parseInt(
-        getComputedStyle(this.timeLineDom).transform.split(",")[4]
-      );
-      const { oneUnitItemCount } = this.zoomTool;
       let { gapWidth, nowTime: startTime, nowDayTime: startDayTime } = this;
-      const oneUnitWidth = gapWidth * oneUnitItemCount;
-      let halfContainerWidth =
-        parseInt(getComputedStyle(this.timeLineWrapDom).width) / 2;
+
       const mouseMove = (event: MouseEvent) => {
         let endX = event.clientX;
         const diffX = endX - startX;
 
         const diffTime = (diffX / gapWidth) * gapTime;
-        let translateX = startTranslateX + diffX;
-        this.nowTime = startTime - diffTime;
-        this.nowDayTime = startDayTime - diffTime;
-        if (this.nowDayTime < 0) {
-          this.nowDayTime = oneDayTime + this.nowDayTime;
+        const nowTime = startTime - diffTime;
+
+        this.setNowTime(nowTime);
+        const nowDayTime = startDayTime - diffTime;
+        if (nowDayTime < 0) {
           this.listeners.prevDay && this.listeners.prevDay();
+          startX = endX;
+          startTime = this.nowTime;
+          startDayTime = this.nowDayTime;
         }
-        if (this.nowDayTime >= oneDayTime) {
-          this.nowDayTime = this.nowDayTime % oneDayTime;
+        if (nowDayTime >= oneDayTime) {
           this.listeners.nextDay && this.listeners.nextDay();
+          startX = endX;
+          startTime = this.nowTime;
+          startDayTime = this.nowDayTime;
         }
         this.listeners.dateChanging &&
           this.listeners.dateChanging(this.nowDayTime);
-        if (translateX > -(oneUnitWidth - halfContainerWidth)) {
-          // console.log("右", formatTime2Text(this.nowDayTime));
 
-          this.renderTimeLine();
-          this.translateTimeLine();
-          // startTranslateX = -(2 * oneUnitWidth - halfContainerWidth);
-          startTranslateX = parseInt(
-            getComputedStyle(this.timeLineDom).transform.split(",")[4]
-          );
-          startX = endX;
-          startTime = this.nowTime;
-          startDayTime = this.nowDayTime;
-          return;
-        } else if (translateX < -(2 * oneUnitWidth - halfContainerWidth)) {
-          // console.log("左", formatTime2Text(this.nowDayTime));
-          this.renderTimeLine();
-          this.translateTimeLine();
-          // startTranslateX = -(oneUnitWidth - halfContainerWidth);
-          startTranslateX = parseInt(
-            getComputedStyle(this.timeLineDom).transform.split(",")[4]
-          );
-          startX = endX;
-          startTime = this.nowTime;
-          startDayTime = this.nowDayTime;
-          return;
-        }
-        // console.log("move", translateX);
-
-        this.timeLineDom.style.transform = `translateX(${translateX}px)`;
+        this.renderTimeLine();
       };
 
       const mouseUp = (event: MouseEvent) => {
@@ -217,7 +199,7 @@ export class TimeLineContainer implements TimeLineOption {
 
   private initResizeListener() {
     this.windowEvents.resize = () => {
-      this.translateTimeLine();
+      this.renderTimeLine();
     };
 
     window.addEventListener("resize", this.windowEvents.resize);
@@ -225,7 +207,6 @@ export class TimeLineContainer implements TimeLineOption {
 
   zoomCb() {
     this.renderTimeLine();
-    this.translateTimeLine();
   }
 
   initOption(option: TimeLineOption) {
@@ -243,17 +224,8 @@ export class TimeLineContainer implements TimeLineOption {
   }
 
   setNowTime(nowTime: number) {
-    this.nowTime = nowTime;
-    this.setDayTimeFromNowTime();
-    this.translateTimeLine();
-  }
-
-  private setDayTimeFromNowTime() {
-    const date = new Date();
-    this.nowDayTime =
-      date.getHours() * oneHourTime +
-      (date.getMinutes() + 1) * oneMinuteTime +
-      date.getSeconds() * 1000;
+    this.nowTimeDate.setTime(nowTime);
+    this.renderTimeLine();
   }
 
   render() {
@@ -286,6 +258,13 @@ export class TimeLineContainer implements TimeLineOption {
     const { oneUnitItemCount, zoomUnit } = zoomTool;
 
     const { index } = this.zoomTool.getInfoFromZoomTool(nowDayTime);
+
+    if (index === this.lastIndex) {
+      this.translateTimeLine();
+      return;
+    } else {
+      this.lastIndex = index;
+    }
     const gapTime = this.zoomTool.getGapTime();
 
     timeLineDom.innerHTML = "";
@@ -315,6 +294,8 @@ export class TimeLineContainer implements TimeLineOption {
     timeLineDom.appendChild(this.timeHeightLightAreaWrapDom);
     //
     this.renderHeightLightAreas();
+
+    this.translateTimeLine();
   }
 
   renderHeightLightAreas() {
